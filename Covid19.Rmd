@@ -1,0 +1,237 @@
+---
+title: "California Covid-19 Analytics"
+output:
+  beamer_presentation: default
+  ioslides_presentation: default
+date: "2023-11-17"
+---
+
+<style type="text/css">
+body p, div, h1, h2, h3, h4, h5 {
+color: black;
+font-family: Modern Computer Roman;
+}
+slides > slide.title-slide hgroup h1 {
+color: #8C1D40; <!--the maroon color-->
+}
+h2 {
+color: #8C1D40; <!-- the maroon color-->
+}
+ .conclusion p {
+      font-size: 18px; /* Adjust the size to your preference */
+      font-weight: bold;
+    }
+</style>
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## Learn About The DataSet
+
+In this presentation I'll be doing a data analysis from data retrieved from 
+https://data.ca.gov/dataset under the File COVID-19 Vaccine Progress Dashboard Data and here is the link to that file --> https://data.ca.gov/dataset/covid-19-vaccine-progress-dashboard-data. 
+
+The data is from the same source as the Vaccine Progress Dashboard at https://covid19.ca.gov/vaccination-progress-data/. The data has been updated at least 3 times, with the most recent one from March 3 2023, this will be the current data I'm drawing from. 
+
+## Objective
+
+The data summarizes vaccination data at the county level by county of residence within the state of California. With this data set, I'm aiming to create two different plots that provide insights into COVID-19 hospitalization data. 
+
+The objective of the code is to filter the dataset, ensuring only relevant and complete information is used for visualization. Subsequently, I am aiming to generate accurate visual representations, empowering a deeper understanding of the COVID-19 hospitalization landscape across Californian counties. These visuals provide varying perspectives: the count of confirmed hospitalized patients per county and a composite index merging different factors, enabling comprehensive insights into the severity of hospitalizations.
+
+This is a simple data exploration, we are just exploring trends in cases of COVID-19.
+
+## loading files
+```{r liibrary, echo=TRUE, message = FALSE}
+library(readr)  
+library(dplyr)  
+library(ggplot2)
+```
+Here we are doing the simple task of loading we need for plotting and getting our dataset to work and analyize. 
+```{r chunk_1, echo=TRUE, message=FALSE}
+statewide_covid_19_hospital_county_data <- read_csv("~/Desktop/covid-19-hospital-data/statewide-covid-19-hospital-county-data.csv")
+```
+Here we are loading the directoory of our actual dataset. 
+
+## View Our Current Summary
+cat('<div style="height:300px; overflow-y: scroll;">')
+```{r chunk_2, echo=TRUE}
+summary(statewide_covid_19_hospital_county_data)
+```
+cat('</div>')
+
+## Data Cleaning and Preprocessing
+```{r chunk_3, echo=TRUE, results='hide'}
+# Check for missing values
+missing_values <- any(is.na(statewide_covid_19_hospital_county_data))
+
+# If there are missing values, handle them appropriately
+clean_data <- na.omit(statewide_covid_19_hospital_county_data)
+
+# Store the information 
+result_text <- paste("Any missing values in the dataset:", missing_values)
+
+
+``` 
+
+## Summary of Our Clean Data
+cat('<div style="height:300px; overflow-y: scroll;">')
+```{r chunk_4, echo=FALSE}
+# Print the result from the previous chunk on the next slide
+knitr::kable(head(clean_data))
+```
+cat('</div>')
+
+## Aggregate Data by County:
+
+```{r chunk_5, echo=TRUE}
+library(dplyr)
+county_summary <- clean_data %>%
+                   group_by(county) %>%
+                   summarize(
+                     avg_hospitalized_confirmed = mean(hospitalized_covid_confirmed_patients),
+                     max_icu_suspected = max(icu_suspected_covid_patients),
+                     total_hospital_beds = sum(all_hospital_beds)
+                   )
+```
+This code helps us cover crucial summary metrics for each county in our dataset. By grouping the data based on counties, it allows us to compute key indicators like the average count of hospitalized COVID-19 confirmed patients, the maximum count of suspected COVID-19 patients in the ICU, and the total available hospital beds. These statistics offer valuable insights into how hospital resources are utilized across different regions concerning COVID-19 hospitalizations
+
+
+## Data Visulation of Data by County Walk-Through
+
+This code utilizes ggplot2 to create a bar plot visualizing the average count of hospitalized confirmed COVID-19 patients across different counties in California.This visualization is beneficial for our analysis as it provides a clear comparison of the average count of hospitalized confirmed patients across various counties.
+
+```{r chunk_6, echo=TRUE, results='hide'}
+library(ggplot2)
+ggplot(county_summary, aes(x = county, y = avg_hospitalized_confirmed)) +
+  geom_bar(stat = "identity", fill = "skyblue") +
+  labs(title = "Average Hospitalized Confirmed Patients by County")
+```
+
+## Data Visulation of Data by County
+
+```{r chunk_7, echo=FALSE}
+library(ggplot2)
+ggplot(county_summary, aes(x = county, y = avg_hospitalized_confirmed)) +
+  geom_bar(stat = "identity", fill = "skyblue") +
+  labs(title = "Average Hospitalized Confirmed Patients by County") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+```
+
+## About our Data Visulization and next steps
+
+This code creates a visual representation of the average count of confirmed COVID-19 patients requiring hospitalization across different counties. It uses bars to display this information, with each bar representing a county. The height of each bar corresponds to the average count of hospitalized confirmed patients in that particular county. This graph helps us easily compare the average patient count between different areas, allowing us to identify variations in COVID-19 hospitalizations across counties.
+
+Now that we've cleaned our data and successful got an accurate depiction of Covid cases per County, we're going to want to includeboth hospitalized patients and ICU bed availability to improve our variability and get better understanding of how COVID-19 cases are affecting CA as a whole.
+
+##  3D plot visualizing confirmed COVID-19 cases, suspected cases, and hospitalized patients
+
+```{r chunk_8, echo=FALSE, message=FALSE}
+
+
+library(plotly)
+
+
+scatter_simple <- plot_ly(clean_data, type = 'scatter3d', mode = 'markers',
+                          x = ~hospitalized_covid_confirmed_patients,
+                          y = ~hospitalized_suspected_covid_patients,
+                          z = ~hospitalized_covid_patients,
+                          marker = list(size = 3))
+
+scatter_simple
+```
+
+## 3D plot visual analysis
+In this 3D scatter plot, we visualize confirmed COVID-19 cases, suspected cases, and hospitalized patients as the x, y, and z-axes, respectively. However, the plot exhibits a broad distribution of data, making it challenging to discern distinct patterns. When cluster points in a 3D scatter plot seem disorganized or scattered in multiple directions, it could indicate disparate scales or ranges among the variables.
+
+This dispersion might hinder a clear interpretation of relationships between the variables. To enhance clarity, considering normalizing the variables to ensure consistent scales across axes.
+
+
+## COVID-19 Patient Hospitalization Patterns plot
+
+```{r chunk_9, echo=FALSE, message=FALSE}
+
+library(plotly)
+
+# Selecting numerical columns
+numerical_cols <- c("hospitalized covid confirmed_patients", "hospitalized suspected covid patients",
+                    "hospitalized covid patients", "all hospital beds", "icu covid confirmed patients",
+                    "icu suspected covid patients", "icu available beds")
+
+# Create 
+scatter_matrix <- plot_ly(clean_data, type = 'scatter3d', mode = 'markers',
+                          x = ~hospitalized_covid_confirmed_patients,
+                          y = ~hospitalized_suspected_covid_patients,
+                          z = ~hospitalized_covid_patients,
+                          text = ~paste("County: ", county, "<br>Date: ", todays_date),
+                          marker = list(size = 5, color = ~icu_available_beds))
+
+# Render the scatterplot matrix
+scatter_matrix
+```
+
+## COVID-19 Patient Hospitalization Patterns
+
+The normalized 3D scatter plot seems to identify a positive correlation between the number of hospitalized COVID-19 confirmed patients and the total hospitalized COVID-19 patients. The clearer and less cluttered visualization allows for a more apparent observation of this relationship.
+
+Positive Correlation: As the count of hospitalized COVID-19 confirmed patients increases, there appears to be a simultaneous increase in the count of total hospitalized COVID-19 patients.
+
+This observation aligns with the trend showcased in the normalized 3D scatter plot, indicating that as the count of confirmed cases rises, there's a proportional increase in the number of individuals requiring hospitalization due to COVID-19.
+
+## A Simple stat ratio 
+
+This simple ratio plot provides a simple representation of the ratio between hospitalized confirmed patients and available hospital beds
+
+```{r chunk_10, echo=FALSE, message=FALSE, warning=FALSE}
+library(ggplot2)
+
+# Assuming your dataset is named 'statewide_covid_19_hospital_county_data'
+# Calculate the ratio of Hospitalized Confirmed Patients to Available Hospital Beds
+statewide_covid_19_hospital_county_data$hospitalization_ratio <- 
+  statewide_covid_19_hospital_county_data$hospitalized_covid_confirmed_patients / 
+  statewide_covid_19_hospital_county_data$all_hospital_beds
+
+# Create a scatter plot for the ratio by county
+ggplot(statewide_covid_19_hospital_county_data, aes(x = county, y = hospitalization_ratio)) +
+  geom_point(color = "blue", size = 3) +
+  labs(title = "Ratio of Hospitalized Confirmed Patients to Available Hospital Beds by County",
+       x = "County", y = "Hospitalization Ratio") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
+  coord_flip()  # Flip the axes for better readability if there are many counties
+
+
+```
+
+
+## Using the composite index
+This plot here looks very similar, but it offers a more nuanced view by incorporating multiple factors (hospitalized patients and ICU bed availability) in a weighted index, potentially providing a more comprehensive insight into the situation
+```{r chunk_11, echo=FALSE, message=FALSE, warning=FALSE}
+
+statewide_covid_19_hospital_county_data$composite_index <- 
+  (statewide_covid_19_hospital_county_data$hospitalized_covid_confirmed_patients +
+   statewide_covid_19_hospital_county_data$icu_covid_confirmed_patients) /
+  (statewide_covid_19_hospital_county_data$all_hospital_beds +
+   statewide_covid_19_hospital_county_data$icu_available_beds)
+
+# Create a scatter plot for the composite index by county
+ggplot(statewide_covid_19_hospital_county_data, aes(x = county, y = composite_index)) +
+  geom_point(color = "pink", size = 3) +
+  labs(title = "Composite Index of Hospitalization by County",
+       x = "County", y = "Composite Index") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
+  coord_flip()  # Flip the axes for better readability if there are many counties
+
+
+```
+
+## Conclusion
+<div class="conclusion">
+  <p>
+Through the exploration of COVID-19 hospitalization data across Californian counties, several vital observations have surfaced:
+
+</p>
+The analysis reveals substantial variations in hospitalization counts among counties, with Los Angeles being the highest. Some areas exhibit higher average counts of hospitalized confirmed COVID-19 patients, indicating potential hotspots requiring closer attention and resource allocation.
+
+In summary, this analysis offers crucial insights into the COVID-19 hospitalization landscape in California. For example we analyzed data from Los Angeles, Riverside, Santa Clara, and Orange County, and many more! the correlation of data we got for California we found can now be used to make more informed decision-making and create targeted interventions in order to combat the challenges posed by the pandemic.
+</div>
